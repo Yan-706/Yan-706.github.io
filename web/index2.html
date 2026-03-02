@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星垣规划项目概览</title>
+    <!-- 外部依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 全局重置 - 消除所有默认间隙 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        }
+
+        /* 页面基础 - 全屏无滚动 */
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        body {
+            background-image: url("./images/bg2.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        .top-main-title {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 90px;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+            font-size: 2vw;
+            font-weight: bold;
+            text-shadow: 0 0 12px #00aaff, 0 0 20px #00aaff;
+            border: 12px solid transparent;
+            border-image: url("./images/title.png") 30 stretch;
+            border-left: none;
+            border-right: none;
+            background-color: rgba(13, 77, 156, 0.1);
+        }
+
+        /* 核心：2×2网格容器 */
+        .container {
+            margin-top: 6vh;
+            display: grid;
+            grid-template-areas:
+                "panel1 panel2"
+                "panel3 photos-container";
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            position: relative;
+            gap: 15px;
+        }
+
+        /* 四个板块核心错位样式 */
+        #panel1 {
+            grid-area: panel1;
+            position: relative;
+            transform: translate(0px, 0px) scale(0.99);
+            z-index: 1;
+            height: 480px;
+        }
+        #panel2 {
+            grid-area: panel2;
+            position: relative;
+            transform: translate(0px, 0px) scale(0.99);
+            z-index: 2;
+            height: 700px;
+        }
+        #panel3 {
+            grid-area: panel3;
+            position: relative;
+            transform: translate(0px, -200px) scale(0.99);
+            z-index: 3;
+            height: 180%;
+        }
+        #photos-container {
+            grid-area: photos-container;
+            position: relative;
+            transform: translate(0px, 0px) scale(1);
+            z-index: 4;
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            flex: none;
+            width: 1200px;
+        }
+
+        /* 照片容器内部的两个小板块 */
+        .photo-subpanel {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-width: 25px;
+            border-style: solid;
+            border-image-source: url("./images/border.png");
+            border-image-slice: 51 38 20 132;
+            border-image-repeat: round;
+            border-image-width: 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            width: 594px;
+            min-width: 594px;
+            max-width: 594px;
+        }
+
+        /* 面板基础样式 */
+        .panel {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-width: 25px;
+            border-style: solid;
+            border-image-source: url("./images/border.png");
+            border-image-slice: 51 38 20 132;
+            border-image-repeat: round;
+            border-image-width: 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* 面板悬浮效果 */
+        .panel:hover, .photo-subpanel:hover {
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 99 ;
+        }
+
+        /* 面板头部 - 胶囊状背景 */
+        .panel-header, .photo-subpanel-header {
+            background: linear-gradient(135deg, #1a6dcc 0%, #0d4d9c 100%);
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border-bottom: none;
+            border-radius: 20px;
+            margin: 8px 10px;
+            padding: 6px 8px;
+            height: auto;
+        }
+
+        /* 面板内容区 */
+        .panel-content, .photo-subpanel-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            min-height: 0;
+            padding: 10px;
+        }
+        #panel1 .panel-content { padding: 6px; }
+        #panel2 .panel-content { padding: 9px; }
+        #panel3 .panel-content { padding: 11px; }
+
+        /* 饼图区域样式 */
+        #pieChartContainer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+        #pieChart {
+            width: 100% !important;
+            height: auto !important;
+            max-width: 300px;
+            max-height: 300px;
+            margin-left: 200px;
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            margin-left: 100px;
+            gap: 10px;
+            transform: translateY(50px);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .legend-item span {
+            color: white;
+         }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* 地图区域样式 */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .map-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .map-btn {
+            background-color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .map-btn:hover {
+            background-color: #1a6dcc;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* 说明区域样式 */
+        .description-content {
+            line-height: 1.6;
+            font-size: 14px;
+            color: white;
+        }
+        .description-content h3 {
+            color: #1a6dcc;
+            margin: 12px 0 8px 0;
+            font-size: 16px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid #eaeaea;
+        }
+        .description-content ul {
+            padding-left: 18px;
+            margin-bottom: 12px;
+        }
+        .description-content li {
+            margin-bottom: 6px;
+            position: relative;
+        }
+        .description-content li:before {
+            content: "•";
+            color:white;
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+        .highlight {
+            background-color: rgba(26, 109, 204, 0.08);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #1a6dcc;
+            margin: 12px 0;
+        }
+        .photoContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 5px;
+        }
+        .photoViewer {
+            flex: 1;
+            border: 2px dashed rgba(221, 221, 221, 0.5);
+            overflow: auto;
+            margin-bottom: 8px;
+            background-color: rgba(249, 249, 249, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: grab;
+        }
+
+        .photoViewer:hover {
+            background-color: rgba(249, 249, 249, 0.12);
+            border-color: rgba(26, 109, 204, 0.3);
+        }
+
+        .photoCanvas {
+            display: block;
+            margin: 5px auto;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            max-width: 95%;
+            max-height: 90%;
+            object-fit: contain;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .photo-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .photo-controls-left, .photo-controls-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-btn {
+            background-color: #1a6dcc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 32px;
+        }
+
+        .control-btn:hover {
+            background-color: #0d4d9c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .page-info {
+            font-size: 13px;
+            font-weight: 500;
+            color: #fff;
+            background-color: rgba(240, 247, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .file-input-container {
+            margin-bottom: 8px;
+        }
+
+        .file-input-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(240, 247, 255, 0.1);
+            border: 2px dashed #1a6dcc;
+            border-radius: 6px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            color: #1a6dcc;
+            font-weight: 500;
+        }
+
+        .file-input-label:hover {
+            background-color: rgba(225, 240, 255, 0.2);
+        }
+
+        .photoFile {
+            display: none;
+        }
+
+        .photo-default-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .photo-default-content i {
+            font-size: 40px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .photo-default-content h4 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #1a6dcc;
+        }
+
+        .photo-default-content p {
+            font-size: 14px;
+            line-height: 1.5;
+            opacity: 0.8;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            font-size: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(26, 109, 204, 0.2);
+            border-radius: 50%;
+            border-top-color: #1a6dcc;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .thumbnails-container {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            overflow-x: auto;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .thumbnail:hover {
+            transform: scale(1.05);
+            border-color: #1a6dcc;
+        }
+
+        .thumbnail.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+        }
+
+        .photo-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .photo-info:hover {
+            opacity: 1;
+        }
+
+        .clear-btn {
+            background-color: #f44336 !important;
+        }
+
+        .clear-btn:hover {
+            background-color: #d32f2f !important;
+        }
+
+        .auto-play-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background-color: rgba(26, 109, 204, 0.1);
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+
+        .auto-play-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background-color: #ccc;
+            border-radius: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: #4CAF50;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(20px);
+        }
+
+        .auto-play-speed {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .speed-select {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            padding: 3px 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .gesture-hint {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .gesture-icon {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .nav-btn {
+            background-color: rgba(26, 109, 204, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-btn:hover {
+            background-color: rgba(26, 109, 204, 1);
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn.prev {
+            left: 10px;
+        }
+
+        .nav-btn.next {
+            right: 10px;
+        }
+
+        .nav-btn i {
+            font-size: 20px;
+        }
+
+        .page-transition {
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .auto-play-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(76, 175, 80, 0.8);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            display: none;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        .keyboard-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            z-index: 10;
+        }
+
+        .keyboard-hint span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .key {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 9px;
+        }
+
+        .panel-content::-webkit-scrollbar,
+        .photo-subpanel-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel-content::-webkit-scrollbar-track,
+        .photo-subpanel-content::-webkit-scrollbar-track {
+            background: rgba(241, 241, 241, 0.2);
+            border-radius: 3px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb,
+        .photo-subpanel-content::-webkit-scrollbar-thumb {
+            background: rgba(193, 193, 193, 0.5);
+            border-radius: 3px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb:hover,
+        .photo-subpanel-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 168, 168, 0.7);
+        }
+
+        @media (max-width: 1200px) {
+            html, body {
+                overflow: auto;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                grid-template-areas:
+                    "panel1"
+                    "panel2"
+                    "panel3"
+                    "photos-container";
+                height: auto;
+                min-height: 100vh;
+                padding: 15px;
+                gap: 20px;
+            }
+
+            #panel1 {
+                transform: translate(0, 10px) scale(0.98);
+                height: 90%;
+            }
+
+            #panel2 {
+                transform: translate(0, 5px) scale(0.99);
+                height: 95%;
+            }
+
+            #panel3 {
+                transform: translate(0, -5px) scale(0.99);
+                height: auto;
+                min-height: 400px;
+            }
+
+            #photos-container {
+                transform: translate(0, -10px) scale(1);
+                flex-direction: column;
+                min-height: 600px;
+            }
+
+            #pieChart {
+                max-width: 220px;
+                max-height: 220px;
+                margin-left: 100px;
+            }
+
+            .chart-legend {
+                margin-left: 50px;
+            }
+
+            .photo-subpanel {
+                min-height: 300px;
+            }
+
+            .photo-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .photo-controls-left, .photo-controls-right {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .page-info {
+                order: -1;
+                margin-bottom: 8px;
+                text-align: center;
+            }
+
+            .nav-btn {
+                width: 35px;
+                height: 35px;
+            }
+
+            .nav-btn i {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #pieChart {
+                margin-left: 50px;
+                max-width: 180px;
+                max-height: 180px;
+            }
+
+            .chart-legend {
+                margin-left: 30px;
+                transform: translateY(30px);
+            }
+
+            .thumbnail {
+                width: 50px;
+                height: 50px;
+            }
+
+            .control-btn {
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+
+            .nav-btn {
+                width: 30px;
+                height: 30px;
+            }
+
+            .nav-btn i {
+                font-size: 14px;
+            }
+
+            .auto-play-control {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-main-title">山东星垣国土空间规划有限公司业务概览</div>
+
+    <div class="container">
+        <!-- 左上：饼状图（右下错位） -->
+        <div class="panel" id="panel1">
+            <div class="panel-header">
+                <span>板块业务结构占比图</span>
+            </div>
+            <div class="panel-content">
+                <div id="pieChartContainer">
+                    <canvas id="pieChart"></canvas>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #4CAF50;"></div>
+                            <span>补充耕地项目 (30%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #2196F3;"></div>
+                            <span>增减挂钩项目 (25.3%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #FF9800;"></div>
+                            <span>年度国土变更调查 (20.5%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #9C27B0;"></div>
+                            <span>林草湿荒调查监测 (15.7%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #F44336;"></div>
+                            <span>全域土地综合整治 (8.5%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右上：山东省影像图（左下错位） -->
+        <div class="panel" id="panel2">
+            <div class="panel-header">
+                <span>重点项目空间布局</span>
+            </div>
+            <div class="panel-content">
+                <div id="map"></div>
+                <div class="map-controls">
+                    <button class="map-btn" id="zoomInBtn" title="放大">+</button>
+                    <button class="map-btn" id="zoomOutBtn" title="缩小">-</button>
+                    <button class="map-btn" id="resetMapBtn" title="重置">↺</button>
+                    <button class="map-btn" id="fullScreenBtn" title="全屏">⛶</button>
+                    <!-- 上传按钮将通过JS动态添加，此处不静态写 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 左下：详细说明（右上错位） -->
+        <div class="panel" id="panel3">
+            <div class="panel-header">
+                <span>板块业务介绍</span>
+            </div>
+            <div class="panel-content description-content">
+                <div class="highlight">
+                    <p style="text-indent: 2em;">公司主要参与土地整治类项目投资策划、可行性研究、规划设计；耕地质量等级评定、补充耕地指标入库备案；年度国土变更调查、林草湿荒年度调查监测；工矿废弃地复垦、建设用地增减挂钩规划、高标准农田建设规划；无人机航飞测绘、图斑外业举证等。</p>
+                </div>
+
+                <h3>商河县"十四五"县域土地整治项目一期</h3>
+                <p style="text-indent: 2em;">商河县"十四五"县域土地整治项目，采用"F+EPC"全过程社会资本投资模式运作，涉及全县12个镇/街、461个整治地块，验收补充耕地面积约1480亩，实际完成总投资1.2亿元</p>
+
+                <h3>沙河社区安置增减挂钩复垦项目</h3>
+                <p style="text-indent: 2em;">商河县沙河社区安置增减挂钩复垦项目，拆旧区总面积约280亩，全部复垦为耕地和其他农用地，规划分两期实施。目前，一期项目已完成竣工验收，二期项目已完成拆迁复垦，等待主管部门验收</p>
+
+                <h3>年度国土变更/林草湿荒调查监测</h3>
+                <ul>
+                    <li><strong>曹县年度国土变更</strong>：针对上年度国土利用变化情况，经内、外业审核确认后,变更现状地类并更新年度数据库。</li>
+                    <li><strong>年度林草湿荒调查</strong>：通过内业分析与外业调查，针对森林/草原/湿地/荒漠四大生态资源的年度变化情况，更新对应的现状地类，形成年度调查成果并与年度国土变更调查成果相衔接。</li>
+                </ul>
+
+                <h3>高标准农田建设项目</h3>
+                <p style="text-indent: 2em;">通过土地平整、地力提升、灌排设施配套、田间道路建设等措施，把一般农田改造成"田成方、路成网、旱能浇、涝能排"的高标准农田，提高耕地质量等级和粮食产量，并对项目区耕地质量开展等级更新评价。</p>
+            </div>
+        </div>
+
+        <!-- 右下：照片浏览器分为两个小板块 - 左右分布 -->
+        <div id="photos-container">
+            <!-- 第一个照片小板块：整改前（左侧） -->
+            <div class="photo-subpanel" id="photo-panel1">
+                <div class="photo-subpanel-header">
+                    <span>实施前照片</span>
+                </div>
+                <div class="photo-subpanel-content">
+                    <div class="photoContainer">
+                        <div class="file-input-container">
+                            <label for="photoFile1" class="file-input-label">
+                                <div><i class="fas fa-camera"></i></div>
+                                <span>选择实施前照片</span>
+                            </label>
+                            <input type="file" id="photoFile1" class="photoFile" accept="image/*" multiple>
+                        </div>
+
+                        <div id="photoViewer1" class="photoViewer">
+                            <!-- 导航按钮 -->
+                            <button class="nav-btn prev" id="prevNavBtn1" style="display: none;">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="nav-btn next" id="nextNavBtn1" style="display: none;">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+
+                            <!-- 自动播放指示器 -->
+                            <div class="auto-play-indicator" id="autoPlayIndicator1">
+                                <i class="fas fa-play-circle"></i>
+                                <span>自动播放中</span>
+                            </div>
+
+                            <!-- 键盘快捷键提示 -->
+                            <div class="keyboard-hint" id="keyboardHint1">
+                                <span><span class="key">←</span> 上一张</span>
+                                <span><span class="key">→</span> 下一张</span>
+                                <span><span class="key">空格</span> 自动播放</span>
+                                <span><span class="key">+/-</span> 缩放</span>
+                            </div>
+
+                            <div class="photo-default-content" id="photoDefault1">
+                                <div><i class="fas fa-landscape"></i></div>
+                                <h4>项目整改前状态</h4>
+                                <p>此区域显示土地整治项目的<br>原始状态照片</p>
+                                <div style="margin-top: 15px; padding: 10px; background-color: rgba(76, 175, 80, 0.1); border-radius: 6px; border-left: 3px solid #4CAF50;">
+                                    <div style="font-size: 12px; color: #fff;">
+                                        <strong>支持多种操作方式：</strong><br>
+                                        按钮翻页 | 滑动翻页 | 键盘快捷键
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="loading" id="photoPlaceholder1" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>正在加载...</p>
+                            </div>
+                            <img id="photoCanvas1" class="photoCanvas" style="display: none;">
+                            <div class="photo-info" id="photoInfo1" style="display: none;">
+                                <i class="fas fa-info-circle"></i> 双击重置缩放
+                            </div>
+                            <div class="gesture-hint" id="gestureHint1" style="display: none;">
+                                <span class="gesture-icon"><i class="fas fa-hand-point-left"></i></span>
+                                <span>左右滑动翻页</span>
+                            </div>
+                        </div>
+
+                        <!-- 缩略图容器 -->
+                        <div id="thumbnails1" class="thumbnails-container" style="display: none;"></div>
+
+                        <div class="photo-controls">
+                            <div class="photo-controls-left">
+                                <button class="control-btn" id="prevPhoto1" style="display: none;">
+                                    <i class="fas fa-chevron-left"></i> 上一张
+                                </button>
+                                <button class="control-btn" id="nextPhoto1" style="display: none;">
+                                    下一张 <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+
+                            <div class="page-info" id="pageInfo1" style="display: none;">
+                                <i class="fas fa-image"></i>
+                                <span id="photoNum1">0</span>/<span id="photoCount1">0</span>
+                            </div>
+
+                            <div class="photo-controls-right">
+                                <button class="control-btn" id="zoomOutPhoto1" style="display: none;" title="缩小">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <button class="control-btn" id="zoomInPhoto1" style="display: none;" title="放大">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button class="control-btn clear-btn" id="clearPhotos1" style="display: none;">
+                                    <i class="fas fa-trash-alt"></i> 清除
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 自动播放控制区域 -->
+                        <div class="auto-play-control" id="autoPlayControl1" style="display: none;">
+                            <div class="auto-play-toggle" id="autoPlayToggle1">
+                                <div class="toggle-switch">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span style="color: white; font-size: 12px;">自动播放</span>
+                            </div>
+                            <div class="auto-play-speed">
+                                <span style="color: white; font-size: 12px;">速度:</span>
+                                <select class="speed-select" id="speedSelect1">
+                                    <option value="2000">2秒</option>
+                                    <option value="3000">3秒</option>
+                                    <option value="5000" selected>5秒</option>
+                                    <option value="8000">8秒</option>
+                                    <option value="10000">10秒</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二个照片小板块：整改后（右侧） -->
+            <div class="photo-subpanel" id="photo-panel2">
+                <div class="photo-subpanel-header">
+                    <span>实施后照片</span>
+                </div>
+                <div class="photo-subpanel-content">
+                    <div class="photoContainer">
+                        <div class="file-input-container">
+                            <label for="photoFile2" class="file-input-label">
+                                <div><i class="fas fa-check-circle"></i></div>
+                                <span>选择实施后照片</span>
+                            </label>
+                            <input type="file" id="photoFile2" class="photoFile" accept="image/*" multiple>
+                        </div>
+
+                        <div id="photoViewer2" class="photoViewer">
+                            <!-- 导航按钮 -->
+                            <button class="nav-btn prev" id="prevNavBtn2" style="display: none;">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="nav-btn next" id="nextNavBtn2" style="display: none;">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+
+                            <!-- 自动播放指示器 -->
+                            <div class="auto-play-indicator" id="autoPlayIndicator2">
+                                <i class="fas fa-play-circle"></i>
+                                <span>自动播放中</span>
+                            </div>
+
+                            <!-- 键盘快捷键提示 -->
+                            <div class="keyboard-hint" id="keyboardHint2">
+                                <span><span class="key">←</span> 上一张</span>
+                                <span><span class="key">→</span> 下一张</span>
+                                <span><span class="key">空格</span> 自动播放</span>
+                                <span><span class="key">+/-</span> 缩放</span>
+                            </div>
+
+                            <div class="photo-default-content" id="photoDefault2">
+                                <div><i class="fas fa-check-double"></i></div>
+                                <h4>项目整改后成果</h4>
+                                <p>此区域显示土地整治项目的<br>整改完成照片</p>
+                                <div style="margin-top: 15px; padding: 10px; background-color: rgba(33, 150, 243, 0.1); border-radius: 6px; border-left: 3px solid #2196F3;">
+                                    <div style="font-size: 12px; color: #fff;">
+                                        <strong>支持多种操作方式：</strong><br>
+                                        按钮翻页 | 滑动翻页 | 键盘快捷键
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="loading" id="photoPlaceholder2" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>正在加载...</p>
+                            </div>
+                            <img id="photoCanvas2" class="photoCanvas" style="display: none;">
+                            <div class="photo-info" id="photoInfo2" style="display: none;">
+                                <i class="fas fa-info-circle"></i> 双击重置缩放
+                            </div>
+                            <div class="gesture-hint" id="gestureHint2" style="display: none;">
+                                <span class="gesture-icon"><i class="fas fa-hand-point-left"></i></span>
+                                <span>左右滑动翻页</span>
+                            </div>
+                        </div>
+
+                        <!-- 缩略图容器 -->
+                        <div id="thumbnails2" class="thumbnails-container" style="display: none;"></div>
+
+                        <div class="photo-controls">
+                            <div class="photo-controls-left">
+                                <button class="control-btn" id="prevPhoto2" style="display: none;">
+                                    <i class="fas fa-chevron-left"></i> 上一张
+                                </button>
+                                <button class="control-btn" id="nextPhoto2" style="display: none;">
+                                    下一张 <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+
+                            <div class="page-info" id="pageInfo2" style="display: none;">
+                                <i class="fas fa-image"></i>
+                                <span id="photoNum2">0</span>/<span id="photoCount2">0</span>
+                            </div>
+
+                            <div class="photo-controls-right">
+                                <button class="control-btn" id="zoomOutPhoto2" style="display: none;" title="缩小">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <button class="control-btn" id="zoomInPhoto2" style="display: none;" title="放大">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button class="control-btn clear-btn" id="clearPhotos2" style="display: none;">
+                                    <i class="fas fa-trash-alt"></i> 清除
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 自动播放控制区域 -->
+                        <div class="auto-play-control" id="autoPlayControl2" style="display: none;">
+                            <div class="auto-play-toggle" id="autoPlayToggle2">
+                                <div class="toggle-switch">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                                <span style="color: white; font-size: 12px;">自动播放</span>
+                            </div>
+                            <div class="auto-play-speed">
+                                <span style="color: white; font-size: 12px;">速度:</span>
+                                <select class="speed-select" id="speedSelect2">
+                                    <option value="2000">2秒</option>
+                                    <option value="3000">3秒</option>
+                                    <option value="5000" selected>5秒</option>
+                                    <option value="8000">8秒</option>
+                                    <option value="10000">10秒</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+    <script>
+        // 全局变量声明
+        let layerControl = null;  // 用于管理图层控件
+
+        // 1. 饼状图初始化
+        function initPieChart() {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            const data = {
+                labels: ['补充耕地项目', '增减挂钩项目', '年度变更调查', '林草湿荒调查监测', '全域土地综合整治'],
+                datasets: [{
+                    data: [30, 25.3, 20.5, 15.7, 8.5],
+                    backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336'],
+                    borderColor: '#fff',
+                    borderWidth: 2,
+                    hoverOffset: 15
+                }]
+            };
+
+            const pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: ${context.parsed}%`
+                            }
+                        }
+                    },
+                    animation: { animateScale: true, animateRotate: true, duration: 1000 }
+                }
+            });
+
+            document.getElementById('pieChart').onclick = (evt) => {
+                const points = pieChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+                if (points.length) {
+                    const label = pieChart.data.labels[points[0].index];
+                    const value = pieChart.data.datasets[points[0].datasetIndex].data[points[0].index];
+                    alert(`您点击了: ${label}\\n占比: ${value}%`);
+                }
+            };
+            return pieChart;
+        }
+
+        // 2. 山东省地图初始化
+        function initMap() {
+            const map = L.map('map', { attributionControl: false }).setView([36.5, 118.5], 7);
+
+            // 卫星影像图层
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '卫星影像来源: Esri, Maxar, Earthstar Geographics',
+                maxZoom: 18,
+                minZoom: 6
+            }).addTo(map);
+
+            // 道路标注图层
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '地图数据 © OpenStreetMap 贡献者',
+                maxZoom: 19,
+                opacity: 0.3
+            }).addTo(map);
+
+            // 添加城市标记
+            addCityMarkers(map);
+
+            // 地图控制按钮
+            setupMapControls(map);
+
+            // ========== 添加上传 GeoJSON 按钮 ==========
+            const uploadBtn = document.createElement('button');
+            uploadBtn.className = 'map-btn';
+            uploadBtn.id = 'uploadGeoJSONBtn';
+            uploadBtn.title = '上传 GeoJSON';
+            uploadBtn.innerHTML = '📁';  // 文件夹图标
+            document.querySelector('.map-controls').appendChild(uploadBtn);
+
+            // 创建隐藏的文件输入元素
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.geojson,.json';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            // 点击按钮触发文件选择
+            uploadBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // 文件选择后的处理
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const geojson = JSON.parse(ev.target.result);
+                        // 调用显示函数（会替换原有图层）
+                        displayShangheData(map, geojson, 'uploaded');
+                    } catch (err) {
+                        alert('无效的 GeoJSON 文件：' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+
+                // 清空 input 以便重新选择同一个文件
+                fileInput.value = '';
+            });
+            // =========================================
+
+            return map;
+        }
+
+        // 显示商河县数据的函数（支持动态替换）
+        function displayShangheData(map, geojsonData, sourcePath) {
+            // 移除之前存在的商河县图层
+            if (window.shangheLayer) {
+                map.removeLayer(window.shangheLayer);
+                window.shangheLayer = null;
+            }
+
+            if (!geojsonData || !geojsonData.type) {
+                console.error('无效的 GeoJSON 数据:', geojsonData);
+                return;
+            }
+
+            console.log(`正在显示数据 (来源: ${sourcePath})`);
+            console.log('数据类型:', geojsonData.type);
+
+            // 定义样式
+            const defaultStyle = {
+                color: "#ff0000", // 红色边界
+                weight: 3,
+                opacity: 0.8,
+                fillColor: "#ff7800", // 橙色填充
+                fillOpacity: 0
+            };
+
+            const highlightStyle = {
+                weight: 5,
+                fillOpacity: 0,
+                color: "#ff0000"
+            };
+
+            // 创建 GeoJSON 图层
+            const shangheLayer = L.geoJSON(geojsonData, {
+                style: defaultStyle,
+                pointToLayer: function(feature, latlng) {
+                    if (feature.geometry && feature.geometry.type === 'Point') {
+                        return L.circleMarker(latlng, {
+                            radius: 8,
+                            fillColor: "#ff0000",
+                            color: "#ffffff",
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                    }
+                    return L.marker(latlng);
+                },
+                onEachFeature: function(feature, layer) {
+                    let popupContent = '<div style="font-weight: bold; font-size: 16px; color: #ff0000;">';
+                    popupContent += feature.properties.name || '上传区域';
+                    popupContent += '</div>';
+
+                    const props = feature.properties || {};
+                    popupContent += '<div style="margin: 8px 0; padding: 8px 0; border-top: 1px solid #eee;">';
+                    for (const [key, value] of Object.entries(props)) {
+                        popupContent += `<strong>${key}:</strong> ${value}<br>`;
+                    }
+                    popupContent += '</div>';
+                    popupContent += '<div style="font-size: 12px; color: #666;">点击其他位置关闭</div>';
+
+                    layer.bindPopup(popupContent);
+
+                    layer.on('mouseover', function() {
+                        this.setStyle(highlightStyle);
+                        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                            this.bringToFront();
+                        }
+                    });
+
+                    layer.on('mouseout', function() {
+                        this.setStyle(defaultStyle);
+                    });
+
+                    layer.on('click', function(e) {
+                        if (layer.getBounds) {
+                            map.fitBounds(layer.getBounds());
+                        } else if (e.latlng) {
+                            map.setView(e.latlng, 12);
+                        }
+                    });
+                }
+            }).addTo(map);
+
+            // 保存图层引用
+            window.shangheLayer = shangheLayer;
+
+            // 处理图层控件
+            if (!layerControl) {
+                layerControl = L.control.layers(null, { "上传的边界": shangheLayer }, {
+                    collapsed: false,
+                    position: 'topright'
+                }).addTo(map);
+            } else {
+                // 更新控件：先移除旧的overlay，再添加新的
+                layerControl.removeLayer(shangheLayer); // 尝试移除（如果存在）
+                layerControl.addOverlay(shangheLayer, "上传的边界");
+            }
+
+            // 缩放到新图层范围
+            if (shangheLayer.getBounds && shangheLayer.getBounds().isValid()) {
+                map.fitBounds(shangheLayer.getBounds());
+            } else {
+                map.setView([37.30, 117.15], 10);
+            }
+
+            console.log('数据已成功显示在地图上');
+        }
+
+        // 添加城市标记的函数（保持不变）
+        function addCityMarkers(map) {
+            const cities = [
+                { name: "济南", coords: [36.65, 117.12], type: "省会", desc: "政治、文化、教育中心", population: "920万" },
+                { name: "威海", coords: [37.2133, 122.0215], type: "沿海城市", desc: "制造业基地、葡萄酒城", population: "706万" },
+                { name: "临沂", coords: [35.05, 118.35], type: "商贸城市", desc: "物流之都、商贸名城", population: "1100万" },
+                { name: "济宁", coords: [35.42, 116.58], type: "文化名城", desc: "孔孟之乡、运河之都", population: "836万" },
+                { name: "淄博", coords: [36.80, 118.05], type: "工业城市", desc: "齐国故都、化工名城", population: "470万" },
+                { name: "泰安", coords: [36.20, 117.08], type: "旅游城市", desc: "五岳之首泰山所在地", population: "547万" },
+
+            ];
+
+            cities.forEach(city => {
+                const marker = L.marker(city.coords).addTo(map);
+                const isShanghe = city.name === "商河县";
+
+                marker.bindPopup(`
+                    <div style="font-weight: bold; font-size: ${isShanghe ? '16px' : '14px'}; color: ${isShanghe ? '#ff0000' : '#1a6dcc'};">${city.name}</div>
+                    <div style="margin: 5px 0; padding: 5px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee;">
+                        <strong>城市类型:</strong> ${city.type}<br>
+                        <strong>人口:</strong> ${city.population}<br>
+                        <strong>特点:</strong> ${city.desc}
+                    </div>
+                    <div style="font-size: 11px; color: #666;">点击地图其他位置关闭</div>
+                `);
+
+                marker.on('click', () => {
+                    map.setView(city.coords, isShanghe ? 11 : 9);
+                });
+            });
+        }
+
+        // 设置地图控制按钮
+        function setupMapControls(map) {
+            document.getElementById('zoomInBtn').addEventListener('click', () => map.zoomIn());
+            document.getElementById('zoomOutBtn').addEventListener('click', () => map.zoomOut());
+            document.getElementById('resetMapBtn').addEventListener('click', () => map.setView([36.5, 118.5], 7));
+            document.getElementById('fullScreenBtn').addEventListener('click', () => {
+                const mapContainer = document.getElementById('map');
+                if (!document.fullscreenElement) {
+                    mapContainer.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            document.addEventListener('fullscreenchange', () => {
+                setTimeout(() => map.invalidateSize(), 300);
+            });
+        }
+
+        // 3. 照片浏览器初始化函数（保持不变，完整复制原代码）
+        function createPhotoViewer(photoViewerId, photoCanvasId, photoPlaceholderId, photoDefaultId,
+                                 prevPhotoBtnId, nextPhotoBtnId, photoNumId, photoCountId,
+                                 zoomInPhotoBtnId, zoomOutPhotoBtnId, photoFileInputId,
+                                 clearPhotosBtnId, pageInfoId, thumbnailsId, photoInfoId,
+                                 autoPlayControlId, autoPlayToggleId, speedSelectId, gestureHintId,
+                                 prevNavBtnId, nextNavBtnId, autoPlayIndicatorId, keyboardHintId) {
+
+            const photoFileInput = document.getElementById(photoFileInputId);
+            const photoCanvas = document.getElementById(photoCanvasId);
+            const photoViewer = document.getElementById(photoViewerId);
+            const photoPlaceholder = document.getElementById(photoPlaceholderId);
+            const photoDefault = document.getElementById(photoDefaultId);
+            const prevPhotoBtn = document.getElementById(prevPhotoBtnId);
+            const nextPhotoBtn = document.getElementById(nextPhotoBtnId);
+            const photoNumSpan = document.getElementById(photoNumId);
+            const photoCountSpan = document.getElementById(photoCountId);
+            const zoomInPhotoBtn = document.getElementById(zoomInPhotoBtnId);
+            const zoomOutPhotoBtn = document.getElementById(zoomOutPhotoBtnId);
+            const clearPhotosBtn = document.getElementById(clearPhotosBtnId);
+            const pageInfo = document.getElementById(pageInfoId);
+            const thumbnailsContainer = document.getElementById(thumbnailsId);
+            const photoInfo = document.getElementById(photoInfoId);
+            const autoPlayControl = document.getElementById(autoPlayControlId);
+            const autoPlayToggle = document.getElementById(autoPlayToggleId);
+            const speedSelect = document.getElementById(speedSelectId);
+            const gestureHint = document.getElementById(gestureHintId);
+            const prevNavBtn = document.getElementById(prevNavBtnId);
+            const nextNavBtn = document.getElementById(nextNavBtnId);
+            const autoPlayIndicator = document.getElementById(autoPlayIndicatorId);
+            const keyboardHint = document.getElementById(keyboardHintId);
+
+            let photos = [];
+            let currentPhotoIndex = 0;
+            let scale = 1.0;
+            let zoomStep = 0.2;
+            let minScale = 0.3;
+            let maxScale = 3.0;
+            let autoPlayInterval = null;
+            let isAutoPlaying = false;
+            let autoPlaySpeed = 5000;
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const swipeThreshold = 50;
+          function showControls() {
+                prevPhotoBtn.style.display = 'flex';
+                nextPhotoBtn.style.display = 'flex';
+                zoomInPhotoBtn.style.display = 'flex';
+                zoomOutPhotoBtn.style.display = 'flex';
+                clearPhotosBtn.style.display = 'flex';
+                pageInfo.style.display = 'flex';
+                thumbnailsContainer.style.display = 'flex';
+                photoInfo.style.display = 'block';
+                autoPlayControl.style.display = 'flex';
+                gestureHint.style.display = 'flex';
+                prevNavBtn.style.display = 'flex';
+                nextNavBtn.style.display = 'flex';
+                keyboardHint.style.display = 'flex';
+            }
+
+            function hideControls() {
+                prevPhotoBtn.style.display = 'none';
+                nextPhotoBtn.style.display = 'none';
+                zoomInPhotoBtn.style.display = 'none';
+                zoomOutPhotoBtn.style.display = 'none';
+                clearPhotosBtn.style.display = 'none';
+                pageInfo.style.display = 'none';
+                thumbnailsContainer.style.display = 'none';
+                photoInfo.style.display = 'none';
+                autoPlayControl.style.display = 'none';
+                gestureHint.style.display = 'none';
+                prevNavBtn.style.display = 'none';
+                nextNavBtn.style.display = 'none';
+                keyboardHint.style.display = 'none';
+                autoPlayIndicator.style.display = 'none';
+            }
+
+            function renderCurrentPhoto() {
+                if (photos.length === 0) return;
+
+                photoPlaceholder.style.display = 'flex';
+                photoPlaceholder.innerHTML = `<div class="spinner"></div><p>正在加载...</p>`;
+                photoCanvas.style.display = 'none';
+
+                const photoUrl = photos[currentPhotoIndex];
+                const img = new Image();
+
+                img.onload = function() {
+                    photoCanvas.src = photoUrl;
+                    photoCanvas.alt = `照片 ${currentPhotoIndex + 1}`;
+                    photoCanvas.style.transform = `scale(${scale})`;
+                    photoCanvas.style.opacity = '0';
+
+                    photoCanvas.classList.add('page-transition');
+
+                    setTimeout(() => {
+                        photoCanvas.style.opacity = '1';
+                        photoCanvas.style.transition = 'opacity 0.3s ease';
+                    }, 10);
+
+                    setTimeout(() => {
+                        photoCanvas.classList.remove('page-transition');
+                    }, 500);
+
+                    photoPlaceholder.style.display = 'none';
+                    photoCanvas.style.display = 'block';
+
+                    photoNumSpan.textContent = currentPhotoIndex + 1;
+                    photoCountSpan.textContent = photos.length;
+
+                    updateThumbnails();
+
+                    if (photos.length <= 1) {
+                        prevNavBtn.style.display = 'none';
+                        nextNavBtn.style.display = 'none';
+                    } else {
+                        prevNavBtn.style.display = 'flex';
+                        nextNavBtn.style.display = 'flex';
+                    }
+                };
+
+                img.onerror = function() {
+                    photoPlaceholder.innerHTML = `
+                        <div style="font-size: 30px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i></div>
+                        <p>加载失败</p>
+                    `;
+                };
+
+                img.src = photoUrl;
+            }
+
+            function updateThumbnails() {
+                thumbnailsContainer.innerHTML = '';
+                photos.forEach((photoUrl, index) => {
+                    const thumbnail = document.createElement('img');
+                    thumbnail.src = photoUrl;
+                    thumbnail.className = 'thumbnail';
+                    if (index === currentPhotoIndex) {
+                        thumbnail.classList.add('active');
+                    }
+                    thumbnail.onclick = () => {
+                        currentPhotoIndex = index;
+                        renderCurrentPhoto();
+                        resetAutoPlay();
+                    };
+                    thumbnailsContainer.appendChild(thumbnail);
+                });
+            }
+
+            function prevPhoto() {
+                if (photos.length > 0) {
+                    currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+                    scale = 1.0;
+                    renderCurrentPhoto();
+                }
+            }
+
+            function nextPhoto() {
+                if (photos.length > 0) {
+                    currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+                    scale = 1.0;
+                    renderCurrentPhoto();
+                }
+            }
+
+            prevPhotoBtn.addEventListener('click', () => {
+                prevPhoto();
+                resetAutoPlay();
+            });
+
+            nextPhotoBtn.addEventListener('click', () => {
+                nextPhoto();
+                resetAutoPlay();
+            });
+
+            prevNavBtn.addEventListener('click', () => {
+                prevPhoto();
+                resetAutoPlay();
+            });
+
+            nextNavBtn.addEventListener('click', () => {
+                nextPhoto();
+                resetAutoPlay();
+            });
+
+            zoomInPhotoBtn.addEventListener('click', () => {
+                if (photos.length === 0) return;
+                if (scale < maxScale) {
+                    scale += zoomStep;
+                    photoCanvas.style.transform = `scale(${scale})`;
+                }
+            });
+
+            zoomOutPhotoBtn.addEventListener('click', () => {
+                if (photos.length === 0) return;
+                if (scale > minScale) {
+                    scale -= zoomStep;
+                    photoCanvas.style.transform = `scale(${scale})`;
+                }
+            });
+
+            clearPhotosBtn.addEventListener('click', () => {
+                if (photos.length > 0 && confirm('确定要清除所有照片吗？')) {
+                    resetPhotoViewer();
+                }
+            });
+
+            function resetPhotoViewer() {
+                stopAutoPlay();
+
+                photos.forEach(url => {
+                    if (url.startsWith('blob:')) {
+                        URL.revokeObjectURL(url);
+                    }
+                });
+
+                photos = [];
+                currentPhotoIndex = 0;
+                scale = 1.0;
+
+                photoCanvas.style.display = 'none';
+                photoPlaceholder.style.display = 'none';
+                photoDefault.style.display = 'flex';
+
+                hideControls();
+
+                thumbnailsContainer.innerHTML = '';
+
+                photoNumSpan.textContent = '0';
+                photoCountSpan.textContent = '0';
+
+                autoPlayToggle.querySelector('.toggle-switch').classList.remove('active');
+                isAutoPlaying = false;
+            }
+
+            function loadPhotos(files) {
+                if (!files || files.length === 0) return;
+
+                resetPhotoViewer();
+
+                photoDefault.style.display = 'none';
+
+                photoPlaceholder.style.display = 'flex';
+                photoPlaceholder.innerHTML = `<div class="spinner"></div><p>正在加载 ${files.length} 张照片...</p>`;
+
+                const photoPromises = Array.from(files).map(file => {
+                    return new Promise((resolve, reject) => {
+                        if (!file.type.startsWith('image/')) {
+                            reject(new Error(`文件 ${file.name} 不是图片格式`));
+                            return;
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const photoUrl = e.target.result;
+                            resolve(photoUrl);
+                        };
+                        reader.onerror = () => reject(new Error(`读取文件 ${file.name} 失败`));
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                Promise.all(photoPromises)
+                    .then(photoUrls => {
+                        photos = photoUrls;
+                        currentPhotoIndex = 0;
+                        scale = 1.0;
+
+                        photoPlaceholder.style.display = 'none';
+                        renderCurrentPhoto();
+
+                        showControls();
+                    })
+                    .catch(error => {
+                        console.error('照片加载失败:', error);
+                        alert('照片加载失败: ' + error.message);
+                        photoPlaceholder.innerHTML = `
+                            <div style="font-size: 30px; color: #f44336;"><i class="fas fa-exclamation-triangle"></i></div>
+                            <p>加载失败</p>
+                        `;
+                        photoDefault.style.display = 'flex';
+                    });
+            }
+
+            function startAutoPlay() {
+                if (photos.length <= 1) return;
+
+                stopAutoPlay();
+
+                autoPlayInterval = setInterval(() => {
+                    nextPhoto();
+                }, autoPlaySpeed);
+
+                isAutoPlaying = true;
+                autoPlayToggle.querySelector('.toggle-switch').classList.add('active');
+                autoPlayIndicator.style.display = 'flex';
+            }
+
+            function stopAutoPlay() {
+                if (autoPlayInterval) {
+                    clearInterval(autoPlayInterval);
+                    autoPlayInterval = null;
+                }
+                isAutoPlaying = false;
+                autoPlayToggle.querySelector('.toggle-switch').classList.remove('active');
+                autoPlayIndicator.style.display = 'none';
+            }
+
+            function resetAutoPlay() {
+                if (isAutoPlaying) {
+                    stopAutoPlay();
+                    startAutoPlay();
+                }
+            }
+
+            function toggleAutoPlay() {
+                if (isAutoPlaying) {
+                    stopAutoPlay();
+                } else {
+                    startAutoPlay();
+                }
+            }
+
+            function setAutoPlaySpeed(speed) {
+                autoPlaySpeed = parseInt(speed);
+                if (isAutoPlaying) {
+                    resetAutoPlay();
+                }
+            }
+
+            photoFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    loadPhotos(e.target.files);
+                }
+            });
+
+            photoViewer.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            photoViewer.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                const diff = touchStartX - touchEndX;
+                if (Math.abs(diff) > swipeThreshold) {
+                    if (diff > 0) {
+                        nextPhoto();
+                    } else {
+                        prevPhoto();
+                    }
+                    resetAutoPlay();
+                }
+            }, { passive: true });
+
+            let mouseDownX = 0;
+            photoViewer.addEventListener('mousedown', (e) => {
+                mouseDownX = e.clientX;
+                photoViewer.style.cursor = 'grabbing';
+            });
+
+            photoViewer.addEventListener('mouseup', (e) => {
+                const mouseUpX = e.clientX;
+                photoViewer.style.cursor = 'grab';
+                const diff = mouseUpX - mouseDownX;
+                if (Math.abs(diff) > swipeThreshold) {
+                    if (diff > 0) {
+                        prevPhoto();
+                    } else {
+                        nextPhoto();
+                    }
+                    resetAutoPlay();
+                }
+            });
+
+            photoViewer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                photoViewer.style.backgroundColor = 'rgba(225, 240, 255, 0.3)';
+                photoViewer.style.borderColor = '#1a6dcc';
+                photoViewer.style.borderStyle = 'solid';
+            });
+
+            photoViewer.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                photoViewer.style.backgroundColor = 'rgba(249, 249, 249, 0.08)';
+                photoViewer.style.borderColor = 'rgba(221, 221, 221, 0.5)';
+                photoViewer.style.borderStyle = 'dashed';
+            });
+
+            photoViewer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                photoViewer.style.backgroundColor = 'rgba(249, 249, 249, 0.08)';
+                photoViewer.style.borderColor = 'rgba(221, 221, 221, 0.5)';
+                photoViewer.style.borderStyle = 'dashed';
+
+                if (e.dataTransfer.files.length) {
+                    const imageFiles = Array.from(e.dataTransfer.files).filter(file =>
+                        file.type.startsWith('image/')
+                    );
+
+                    if (imageFiles.length > 0) {
+                        loadPhotos(imageFiles);
+                        const dataTransfer = new DataTransfer();
+                        imageFiles.forEach(file => dataTransfer.items.add(file));
+                        photoFileInput.files = dataTransfer.files;
+                    } else {
+                        alert('请拖放图片文件（JPG、PNG、GIF、BMP等）');
+                    }
+                }
+            });
+
+            photoCanvas.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                if (photos.length > 0) {
+                    scale = 1.0;
+                    photoCanvas.style.transform = `scale(${scale})`;
+                }
+            });
+
+            photoViewer.addEventListener('wheel', (e) => {
+                if (photos.length === 0) return;
+                e.preventDefault();
+
+                const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+                const newScale = Math.max(minScale, Math.min(maxScale, scale + delta));
+
+                if (newScale !== scale) {
+                    scale = newScale;
+                    photoCanvas.style.transform = `scale(${scale})`;
+                }
+            }, { passive: false });
+
+            document.addEventListener('keydown', (e) => {
+                if (!photoCanvas.style.display || photoCanvas.style.display === 'none') return;
+
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        prevPhoto();
+                        resetAutoPlay();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        nextPhoto();
+                        resetAutoPlay();
+                        break;
+                    case '+':
+                    case '=':
+                        e.preventDefault();
+                        if (scale < maxScale) {
+                            scale += zoomStep;
+                            photoCanvas.style.transform = `scale(${scale})`;
+                        }
+                        break;
+                    case '-':
+                    case '_':
+                        e.preventDefault();
+                        if (scale > minScale) {
+                            scale -= zoomStep;
+                            photoCanvas.style.transform = `scale(${scale})`;
+                        }
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        toggleAutoPlay();
+                        break;
+                }
+            });
+
+            autoPlayToggle.addEventListener('click', toggleAutoPlay);
+            speedSelect.addEventListener('change', (e) => {
+                setAutoPlaySpeed(e.target.value);
+            });
+
+            return {
+                prevPhoto,
+                nextPhoto,
+                resetPhotoViewer,
+                loadPhotos
+            };
+        }
+
+        // 初始化所有组件
+        document.addEventListener('DOMContentLoaded', () => {
+            initPieChart();
+            const map = initMap();  // 初始化地图（已包含上传按钮）
+
+            // 初始化两个照片浏览器
+            const viewer1 = createPhotoViewer(
+                'photoViewer1', 'photoCanvas1', 'photoPlaceholder1', 'photoDefault1',
+                'prevPhoto1', 'nextPhoto1', 'photoNum1', 'photoCount1',
+                'zoomInPhoto1', 'zoomOutPhoto1', 'photoFile1',
+                'clearPhotos1', 'pageInfo1', 'thumbnails1', 'photoInfo1',
+                'autoPlayControl1', 'autoPlayToggle1', 'speedSelect1', 'gestureHint1',
+                'prevNavBtn1', 'nextNavBtn1', 'autoPlayIndicator1', 'keyboardHint1'
+            );
+
+            const viewer2 = createPhotoViewer(
+                'photoViewer2', 'photoCanvas2', 'photoPlaceholder2', 'photoDefault2',
+                'prevPhoto2', 'nextPhoto2', 'photoNum2', 'photoCount2',
+                'zoomInPhoto2', 'zoomOutPhoto2', 'photoFile2',
+                'clearPhotos2', 'pageInfo2', 'thumbnails2', 'photoInfo2',
+                'autoPlayControl2', 'autoPlayToggle2', 'speedSelect2', 'gestureHint2',
+                'prevNavBtn2', 'nextNavBtn2', 'autoPlayIndicator2', 'keyboardHint2'
+            );
+
+            console.log('山东星垣产业投资集团照片浏览器页面加载完成！');
+            console.log('提示：您可以拖放图片文件到照片区域，或点击"选择照片"按钮上传图片');
+            console.log('地图支持上传 GeoJSON 文件显示边界');
+        });
+    </script>
+</body>
+</html>
